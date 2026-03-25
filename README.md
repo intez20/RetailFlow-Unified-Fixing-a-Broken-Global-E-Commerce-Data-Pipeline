@@ -29,51 +29,51 @@ RetailFlow Inc. acquired **three regional e-commerce competitors** with complete
 ## 🏗️ System Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                          AWS S3 (Source)                                │
-│                                                                         │
+┌───────────────────────────────────────────────────────────────────────┐
+│                          AWS S3 (Source)                              │
+│                                                                       │
 │  ┌──────────────┐   ┌──────────────┐   ┌──────────────────────────┐   │
-│  │  Vendor A    │   │  Vendor B    │   │       Vendor C            │   │
-│  │  Shopify     │   │  Magento     │   │   CustomPlatform (Node)   │   │
-│  │  US Market   │   │  EU Market   │   │   Asia (JP + KR)          │   │
-│  │  CSV comma   │   │  CSV pipe    │   │   TSV + nested JSON       │   │
-│  │  5-min batch │   │  Hourly      │   │   5-min streaming         │   │
+│  │  Vendor A    │   │  Vendor B    │   │       Vendor C           │   │
+│  │  Shopify     │   │  Magento     │   │   CustomPlatform (Node)  │   │
+│  │  US Market   │   │  EU Market   │   │   Asia (JP + KR)         │   │
+│  │  CSV comma   │   │  CSV pipe    │   │   TSV + nested JSON      │   │
+│  │  5-min batch │   │  Hourly      │   │   5-min streaming        │   │
 │  └──────┬───────┘   └──────┬───────┘   └───────────┬──────────────┘   │
 └─────────┼──────────────────┼───────────────────────┼──────────────────┘
           │                  │                        │
           ▼                  ▼                        ▼
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                     🥉 BRONZE LAYER (Raw Ingestion)                     │
+│                      BRONZE LAYER (Raw Ingestion)                       │
 │                                                                         │
-│  • Read all 3 formats (comma / pipe / tab delimited)                   │
-│  • Handle Vendor A schema drift on Day 30 (mergeSchema=true)           │
-│  • Add metadata: _source_file, _ingestion_timestamp, _source_vendor    │
-│  • Store as Delta Lake tables — one per vendor                         │
+│  • Read all 3 formats (comma / pipe / tab delimited)                    │
+│  • Handle Vendor A schema drift on Day 30 (mergeSchema=true)            │
+│  • Add metadata: _source_file, _ingestion_timestamp, _source_vendor     │
+│  • Store as Delta Lake tables — one per vendor                          │
 │                                                                         │
 │  Tables: bronze.vendor_a_raw | bronze.vendor_b_raw | bronze.vendor_c_raw│
 └──────────────────────────────┬──────────────────────────────────────────┘
                                │
                                ▼
-┌─────────────────────────────────────────────────────────────────────────┐
-│                     🥈 SILVER LAYER (Clean & Unified)                   │
-│                                                                         │
-│  • Normalize all vendors to single canonical schema                    │
-│  • Parse nested JSON (Vendor C multi-line orders)                      │
+┌───────────────────────────────────────────────────────────────────────┐
+│                      SILVER LAYER (Clean & Unified)                   │
+│                                                                       │
+│  • Normalize all vendors to single canonical schema                   │
+│  • Parse nested JSON (Vendor C multi-line orders)                     │
 │  • Convert all currencies to USD (EUR→USD, JPY→USD, KRW→USD)          │
-│  • Standardize dates to ISO 8601                                       │
-│  • Deduplicate with business rules:                                    │
-│       Priority: SETTLED > COMPLETED > PENDING                          │
-│       Tiebreak: latest updated_timestamp wins                          │
-│       Mark duplicates (is_duplicate=true), never delete                │
-│  • MERGE for idempotent incremental writes                             │
-│                                                                         │
-│  Table: silver.orders_silver_unified                                   │
-└──────────────────────────────┬──────────────────────────────────────────┘
+│  • Standardize dates to ISO 8601                                      │
+│  • Deduplicate with business rules:                                   │
+│       Priority: SETTLED > COMPLETED > PENDING                         │
+│       Tiebreak: latest updated_timestamp wins                         │
+│       Mark duplicates (is_duplicate=true), never delete               │
+│  • MERGE for idempotent incremental writes                            │
+│                                                                       │
+│  Table: silver.orders_silver_unified                                  │
+└──────────────────────────────┬────────────────────────────────────────┘
                                │
                                ▼
-┌─────────────────────────────────────────────────────────────────────────┐
-│                     🥇 GOLD LAYER (Business Analytics)                  │
-│                                                                         │
+┌────────────────────────────────────────────────────────────────────────┐
+│                      GOLD LAYER (Business Analytics)                   │
+│                                                                        │
 │  • Daily revenue by vendor (USD)                                       │
 │  • Daily revenue by product SKU                                        │
 │  • Daily revenue by country                                            │
@@ -81,14 +81,14 @@ RetailFlow Inc. acquired **three regional e-commerce competitors** with complete
 │  • Top 10 products by revenue                                          │
 │  • Promo campaign effectiveness (Day 30+)                              │
 │  • Duplicate analysis report                                           │
-│                                                                         │
+│                                                                        │
 │  Tables: gold.daily_revenue_by_vendor | gold.product_sku_revenue       │
 │          gold.revenue_by_country | gold.customer_frequency             │
-└──────────────────────────────┬──────────────────────────────────────────┘
+└──────────────────────────────┬─────────────────────────────────────────┘
                                │
                                ▼
                    ┌───────────────────────┐
-                   │   📊 BI Dashboards    │
+                   │    BI Dashboards      │
                    │   < 60 sec load time  │
                    └───────────────────────┘
 ```
@@ -99,7 +99,7 @@ RetailFlow Inc. acquired **three regional e-commerce competitors** with complete
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│           Incremental Pipeline Flow                  │
+│           Incremental Pipeline Flow                 │
 │                                                     │
 │  1. Read watermark from ingestion_control_table     │
 │           │                                         │
@@ -339,14 +339,3 @@ Vendor + date creates too many small partitions. Date-only keeps partition count
 | **Python** | Pipeline logic, utility functions |
 
 ---
-
-## 👤 Author
-
-Built as part of the **codebasics.io** Data Engineering challenge.  
-Feel free to ⭐ star the repo if you found it useful!
-
----
-
-## 📄 License
-
-MIT License — use freely, attribution appreciated.
